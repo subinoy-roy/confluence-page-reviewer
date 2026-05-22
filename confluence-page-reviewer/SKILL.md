@@ -27,8 +27,9 @@ After fetching the page (Step 2), check the page title or function code in the h
 
 - **Screen page** — function code starts with `F` or `W` (e.g., `FINV60035`, `WINV00160`). The field specification Excel is in the **"Item Description"** section.
 - **Report page** — function code starts with `R` (e.g., `RINV60070`, `RDLR00050`). The field specification Excel is in the **"Report Items"** section.
+- **Stored Procedure page** — function code starts with `B` (e.g., `BINV00150`, `BVSC00210`). The field specification Excel is in the **"Data Map"** section.
 
-Use this to know which section to look for the Excel in Steps 3b and 3c. If no function code is present, check whether the page has an "Item Description" or "Report Items" section heading and use whichever is present.
+Use this to know which section to look for the Excel in Steps 3b and 3c. If no function code is present, check whether the page has an "Item Description", "Report Items", or "Data Map" section heading and use whichever is present.
 
 ## Step 2: Fetch the page content
 
@@ -59,7 +60,7 @@ Prints the full page content as markdown, including any tables embedded via "Vie
 
 Note the page title and any section headings — you'll use these as location references in your report.
 
-## Step 3: Find attachments and read the Item Description Excel
+## Step 3: Find attachments and read the field specification file
 
 Run both of these in parallel.
 
@@ -90,8 +91,15 @@ For each attachment found, check whether:
 Depending on the page type determined in Step 1:
 - **Screen page** → look for the Excel in the **"Item Description"** section.
 - **Report page** → look for the Excel in the **"Report Items"** section.
+- **Stored Procedure page** → look for the Excel in the **"Data Map"** section.
 
-This Excel documents every field/column in the screen or report — typically columns like Field Name, Field Type, Mandatory/Optional, Default Value, Max Length, and Description. It is meant to stay in sync with the "Display Order" section (Screen) or the report column list (Report).
+For Screen and Report pages, this Excel documents every field/column in the screen or report — typically columns like Field Name, Field Type, Mandatory/Optional, Default Value, Max Length, and Description. It is meant to stay in sync with the "Display Order" section (Screen) or the report column list (Report).
+
+For Stored Procedure pages, the Data Map Excel documents the data flow for every INSERT, UPDATE, and DELETE operation the SP performs. Its structure is:
+- **Left side — Source queries (Q1, Q2, …):** each block identifies a source table (`DB/File Name: QN | table_name`), key fields used to filter/join it, and numbered source fields (`QN.1`, `QN.2`, …) with their expressions.
+- **Right side — Destination blocks:** each block identifies a target table (`DB/File Name: table_name`), numbered destination fields with transformation logic sourced from `QN.M` references or constants, and key fields (for UPDATE/DELETE operations).
+
+The Data Map must stay in sync with Section 3.1 Input/Output and Section 6 Functional Description.
 
 **First — Check if it's already rendered in the page body.** When you fetched the page in markdown format, look at the relevant section ("Item Description" or "Report Items"). If the Excel was embedded via a Confluence "View File" macro, it may have rendered as a table — use that directly and skip to Step 3c. This is particularly likely if you used **Option C** (Word export), as Confluence typically renders embedded files as tables in the exported document.
 
@@ -133,6 +141,24 @@ Check for:
 - **Property contradictions** — column properties in Excel (data type, format, sort/group flag) contradict what the Operation Description says
 - **Missing Excel entirely** — no table content and no `.xlsx` attachment in the "Report Items" section
 
+#### Stored Procedure pages
+The Data Map is the central artifact. Run three classes of checks:
+
+**Internal Data Map consistency:**
+- **Broken source references** — every `QN.M` reference in a destination field must correspond to a field actually defined in source block QN (e.g., if destination uses `Q3.5` but Q3 only defines Q3.1–Q3.3, that is a broken reference)
+- **Missing destination table names** — any destination block where `DB/File Name` is blank; the target table is unknown
+- **Duplicate key mappings** — same source field (`QN.M`) mapped to two different key columns in the same source block (likely a copy-paste error)
+- **Typos in key values** — key field values that appear to be mis-typed (e.g., "color dode" instead of "color code")
+
+**Data Map vs Section 3 Input/Output:**
+- Every source table (Q1…Qn) should appear in Section 3.1 Input or Section 3.3 Reference; flag any source table present in the Data Map but absent from both
+- Every destination table should appear in Section 3.2 Output; flag any destination table present in the Data Map but absent from Section 3.2
+- Tables listed in Section 3.2 Output that have no corresponding destination block in the Data Map
+
+**Data Map vs Section 6 Functional Description:**
+- Key derivation logic in the Data Map (e.g., group_code, document_type assignments) must match the equivalent logic block in the Functional Description; flag any discrepancy
+- Every error code referenced in the Data Map must have a corresponding entry in Section 5 Logging Messages
+
 ## Step 4: Analyze for issues
 
 Read the full page content carefully and check for all of the following:
@@ -168,6 +194,28 @@ Read the full page content carefully and check for all of the following:
 ### Attachment cross-check
 - Check whether the page's narrative is consistent with what the attachments are described as containing
 - Flag any discrepancies between attachment names and how they're described in the body
+
+### Stored Procedure pages — additional checks
+Apply these on top of all the general checks above when the page type is Stored Procedure (B prefix):
+
+**Section 3.1 Input parameters:**
+- Numbering gaps (e.g., list jumps from #4 to #6) — either a parameter was removed without renumbering, or one is missing
+- Mixed data type notation (e.g., `VARCHAR` vs `VARCHAR2` in the same table) — suggests the section was assembled from different sources
+- Parameters and DB tables mixed together without clear separation — check that the table clearly distinguishes individual input parameters from input DB tables
+
+**Section 5 Logging Messages:**
+- Duplicate S.No. values or gaps in the sequence — indicates rows were added/removed without renumbering
+- Two errors with identical descriptions and causes — impossible to distinguish; need unique descriptions or consolidation
+- Error codes referenced in the Functional Description or Data Map that are absent from this table
+
+**Section 6 Functional Description:**
+- Step numbering gaps — a step is referenced (e.g., "from Step 5") but that step number is not defined
+- Filter conditions that appear backwards or incomplete (e.g., "where cancel_flag IS NOT NULL" when the step processes all records)
+- Duplicate assignment blocks — the same variable assigned twice back-to-back with near-identical logic (residual from a refactor)
+
+**Cross-section consistency:**
+- Section 1.2 Post Condition vs Section 3.2 Output — every table written to by the SP should appear in both; a table in Output but not Post Condition (or vice versa) is an inconsistency
+- Section 4 Batch Type / Frequency / Protocol — the schedule and trigger mechanism should be clearly defined; flag if left as N/A or placeholder when the SP is called by other programs (list the callers)
 
 ## Step 5: Write the report
 
@@ -220,15 +268,20 @@ Start with a one-line summary. Then group all issues under three severity headin
 
 ### 📋 Field Specification Issue List
 
-[Include this section only if there are sync issues between the field specification Excel (Item Description for Screen pages, Report Items for Report pages) and the rest of the document. Omit it entirely if everything is in sync — or if the Excel could not be read, note that explicitly here instead.]
+[Include this section only if there are sync issues between the field specification Excel and the rest of the document:
+- **Screen pages** — Item Description Excel vs Display Order
+- **Report pages** — Report Items Excel vs Display Order
+- **Stored Procedure pages** — Data Map Excel vs Section 3 Input/Output, Section 5 Logging Messages, and Section 6 Functional Description
+
+Omit entirely if everything is in sync — or if the Excel could not be read, note that explicitly here instead.]
 
 | # | Issue | Location | Suggested Fix |
 |---|-------|----------|---------------|
-| 1 | [What's wrong — e.g., "Field 'Scan Date' is in Display Order but missing from Item Description Excel"] | [Display Order / Item Description Excel / Report Items Excel / Operation Description §X] | [What to change and where] |
+| 1 | [What's wrong — e.g., "Field 'Scan Date' is in Display Order but missing from Item Description Excel" or "Destination block for tb_inv_r_sap_d has blank DB/File Name" or "Q3.5 referenced in destination but Q3 only defines Q3.1–Q3.3"] | [Display Order / Item Description Excel / Report Items Excel / Data Map Excel / Section 3.1 Input / Section 3.2 Output / Section 5 / Functional Description §N] | [What to change and where] |
 | 2 | ... | ... | ... |
 
 [If the Excel could not be read because it is a binary attachment:]
-> ⚠️ The field specification Excel (`<filename>.xlsx`) is attached to the page but its content could not be read automatically. Please manually verify that all fields listed in the Display Order section are documented in the Excel, and that field names, types, and mandatory/optional status match what is described in the Operation Description.
+> ⚠️ The field specification Excel (`<filename>.xlsx`) is attached to the page but its content could not be read automatically. Please manually verify that all fields/operations documented in the Excel are consistent with the rest of the page.
 
 ---
 
@@ -247,7 +300,7 @@ If the page looks clean with no real issues, say so directly rather than inventi
 
 After writing the report, save it using the Write tool (not a shell command — the report content contains special characters that break shell quoting):
 
-- Filename: `Report_<pageId>_<yyyyMMddHHmmss>.md` — e.g. `Report_1300463772_20260522021546.md`
+- Filename: `Report_<functionCode>_<yyyyMMddHHmmss>.md` if a function code is present on the page (e.g. `Report_BINV00150_20260523003108.md`). Fall back to `Report_<pageId>_<yyyyMMddHHmmss>.md` only if the page has no function code.
 - Get the timestamp from: `date +%Y%m%d%H%M%S` via Bash
 - Write the full report content to that filename in the current working directory
 - Tell the user the full file path once saved
