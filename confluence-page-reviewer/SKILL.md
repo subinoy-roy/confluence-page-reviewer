@@ -48,6 +48,15 @@ python3 <skill-dir>/scripts/confluence_api.py \
 ```
 Requires `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` env vars. Prints the page title and full content as markdown to stdout.
 
+**Option C — Exported Word document (no credentials required):**
+If both MCP and the REST API are unavailable or blocked, ask the user to export the page from Confluence (page menu → **Export** → **Word**) and provide the local path. Then run:
+```bash
+python3 <skill-dir>/scripts/docx_parser.py --file /path/to/exported-page.doc
+```
+**Note:** Confluence's Word export produces a `.doc` file that is actually MHTML (a MIME-wrapped HTML document), not a binary Word file. The script detects the format automatically — pass the file as-is regardless of extension.
+
+Prints the full page content as markdown, including any tables embedded via "View File" macros — so the field specification table may already appear in the output (see Step 3b).
+
 Note the page title and any section headings — you'll use these as location references in your report.
 
 ## Step 3: Find attachments and read the Item Description Excel
@@ -84,7 +93,7 @@ Depending on the page type determined in Step 1:
 
 This Excel documents every field/column in the screen or report — typically columns like Field Name, Field Type, Mandatory/Optional, Default Value, Max Length, and Description. It is meant to stay in sync with the "Display Order" section (Screen) or the report column list (Report).
 
-**First — Check if it's already rendered in the page body.** When you fetched the page in markdown format, look at the relevant section ("Item Description" or "Report Items"). If the Excel was embedded via a Confluence "View File" macro, it may have rendered as a table — use that directly and skip to Step 3c.
+**First — Check if it's already rendered in the page body.** When you fetched the page in markdown format, look at the relevant section ("Item Description" or "Report Items"). If the Excel was embedded via a Confluence "View File" macro, it may have rendered as a table — use that directly and skip to Step 3c. This is particularly likely if you used **Option C** (Word export), as Confluence typically renders embedded files as tables in the exported document.
 
 **If not rendered — Run the Excel reader script.** If the Excel is not already a readable table (appears as an image, blob URL, or a Confluence media file), ask the user to download the file from the Confluence page and provide the local path. Then run:
 
@@ -238,7 +247,7 @@ If the page looks clean with no real issues, say so directly rather than inventi
 
 After writing the report, save it using the Write tool (not a shell command — the report content contains special characters that break shell quoting):
 
-- Filename: `<pageId>_<yyyyMMddHHmmss>.md` — e.g. `1300463772_20260522021546.md`
+- Filename: `Report_<pageId>_<yyyyMMddHHmmss>.md` — e.g. `Report_1300463772_20260522021546.md`
 - Get the timestamp from: `date +%Y%m%d%H%M%S` via Bash
 - Write the full report content to that filename in the current working directory
 - Tell the user the full file path once saved
