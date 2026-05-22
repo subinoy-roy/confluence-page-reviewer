@@ -1,0 +1,5 @@
+.github/
+.claude/
+*.zip
+*.tar.gz
+*.skill
