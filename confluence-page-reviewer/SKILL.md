@@ -28,8 +28,9 @@ After fetching the page (Step 2), check the page title or function code in the h
 - **Screen page** — function code starts with `F` or `W` (e.g., `FINV60035`, `WINV00160`). The field specification Excel is in the **"Item Description"** section.
 - **Report page** — function code starts with `R` (e.g., `RINV60070`, `RDLR00050`). The field specification Excel is in the **"Report Items"** section.
 - **Stored Procedure page** — function code starts with `B` (e.g., `BINV00150`, `BVSC00210`). The field specification Excel is in the **"Data Map"** section.
+- **Interface page** — function code starts with `I` (e.g., `IINV04002`, `IVSC00120`). The field specification Excel is in the **"Interface File Format"** section (typically Section 7).
 
-Use this to know which section to look for the Excel in Steps 3b and 3c. If no function code is present, check whether the page has an "Item Description", "Report Items", or "Data Map" section heading and use whichever is present.
+Use this to know which section to look for the Excel in Steps 3b and 3c. If no function code is present, check whether the page has an "Item Description", "Report Items", "Data Map", or "Interface File Format" section heading and use whichever is present.
 
 ## Step 2: Fetch the page content
 
@@ -92,6 +93,7 @@ Depending on the page type determined in Step 1:
 - **Screen page** → look for the Excel in the **"Item Description"** section.
 - **Report page** → look for the Excel in the **"Report Items"** section.
 - **Stored Procedure page** → look for the Excel in the **"Data Map"** section.
+- **Interface page** → look for the Excel in the **"Interface File Format"** section (typically Section 7).
 
 For Screen and Report pages, this Excel documents every field/column in the screen or report — typically columns like Field Name, Field Type, Mandatory/Optional, Default Value, Max Length, and Description. It is meant to stay in sync with the "Display Order" section (Screen) or the report column list (Report).
 
@@ -101,9 +103,15 @@ For Stored Procedure pages, the Data Map Excel documents the data flow for every
 
 The Data Map must stay in sync with Section 3.1 Input/Output and Section 6 Functional Description.
 
-**First — Check if it's already rendered in the page body.** When you fetched the page in markdown format, look at the relevant section ("Item Description" or "Report Items"). If the Excel was embedded via a Confluence "View File" macro, it may have rendered as a table — use that directly and skip to Step 3c. This is particularly likely if you used **Option C** (Word export), as Confluence typically renders embedded files as tables in the exported document.
+For Interface pages, the Interface File Format Excel documents the physical layout of every output file record type (Header, Detail, Footer). Each entry typically covers: field name, start position, end position (or length), data type (Character/Numeric/Date), Mandatory/Optional flag, and description. The Detail section is authoritative for the interface's data fields. It must stay in sync with Section 6.4 Record construction & mapping.
 
-**If not rendered — Run the Excel reader script.** If the Excel is not already a readable table (appears as an image, blob URL, or a Confluence media file), ask the user to download the file from the Confluence page and provide the local path. Then run:
+**First — Check if it's already rendered in the page body.** When you fetched the page in markdown format, look at the relevant section ("Item Description", "Report Items", "Data Map", or "Interface File Format"). If the Excel was embedded via a Confluence "View File" macro, it may have rendered as a table — use that directly and skip to Step 3c. This is particularly likely if you used **Option C** (Word export), as Confluence typically renders embedded files as tables in the exported document.
+
+**If not rendered — STOP and ask the user to download the file.** If the Excel is not already a readable table (appears as an image, blob URL, or a Confluence media file reference), do not skip ahead. Ask the user:
+
+> "I can see the [Item Description / Report Items / Data Map] Excel is embedded on the page but I can't read it directly. Could you download it from Confluence (click the file to open it, then download) and share the local path?"
+
+Once the user provides the path, run:
 
 ```bash
 python3 <skill-dir>/scripts/excel_parser.py --file /path/to/downloaded/file.xlsx
@@ -111,9 +119,9 @@ python3 <skill-dir>/scripts/excel_parser.py --file /path/to/downloaded/file.xlsx
 
 - On success it prints the Excel content as a markdown table to stdout.
 - Use that table for the cross-check in Step 3c.
-- If the user cannot provide the file, continue below.
+- This applies equally to all page types: Item Description Excel (Screen), Report Items Excel (Report), Data Map Excel (Stored Procedure), and Interface File Format Excel (Interface).
 
-**If the file cannot be provided:**
+**Only if the user explicitly says they cannot provide the file:**
 - Check the HTML format of the page (`contentFormat: "html"`) for `data-type="media"` and `data-media-type="file"` elements inside the relevant section — these confirm the file exists even if it cannot be read.
 - Flag this in the report using the Issue List format in Step 5: the file exists but its content could not be read automatically, and manual verification is needed.
 
@@ -158,6 +166,17 @@ The Data Map is the central artifact. Run three classes of checks:
 **Data Map vs Section 6 Functional Description:**
 - Key derivation logic in the Data Map (e.g., group_code, document_type assignments) must match the equivalent logic block in the Functional Description; flag any discrepancy
 - Every error code referenced in the Data Map must have a corresponding entry in Section 5 Logging Messages
+
+#### Interface pages
+Compare the **Interface File Format Excel** (Section 7) against the field list in **Section 6.4 Record construction & mapping** (Detail fields numbered list) record type by record type.
+
+Check for:
+- **Fields in Section 6.4 missing from the Excel** — field is described in the Functional Description but has no row in the Interface File Format Excel
+- **Fields in the Excel not in Section 6.4** — the Excel documents a field that has no mapping logic in the Functional Description
+- **Name mismatches** — same field labeled differently in the two places (e.g., "PDIDate" vs "PDI Date")
+- **Length contradictions** — field length in the Excel differs from the length implied by the source DB column or the fixed-record total in Section 6.1
+- **Mandatory/Optional contradictions** — a field marked Mandatory in the Excel but the Functional Description treats it as optional (no validation), or vice versa
+- **Missing Excel entirely** — no table content and no `.xlsx` attachment in the "Interface File Format" section
 
 ## Step 4: Analyze for issues
 
@@ -217,6 +236,27 @@ Apply these on top of all the general checks above when the page type is Stored 
 - Section 1.2 Post Condition vs Section 3.2 Output — every table written to by the SP should appear in both; a table in Output but not Post Condition (or vice versa) is an inconsistency
 - Section 4 Batch Type / Frequency / Protocol — the schedule and trigger mechanism should be clearly defined; flag if left as N/A or placeholder when the SP is called by other programs (list the callers)
 
+### Interface pages — additional checks
+Apply these on top of all the general checks above when the page type is Interface (I prefix):
+
+**File structure consistency (Section 6.1 + Section 7 Interface File Format Excel):**
+- The total fixed record length stated in Section 6.1 must equal the sum of all field lengths in the Detail section of the Interface File Format Excel; a mismatch means a field is missing or a length is wrong
+- The field separator stated in Section 6.1 (e.g., `|`) must match what is shown in Section 6.4.2 and the Interface File Format Excel
+- The file type (fixed-length, delimited, etc.) must be consistent across Section 6.1, Section 6.4, and the Interface File Format Excel
+
+**Section 6.2 Parameters vs Section 3.1 Input:**
+- Every parameter listed in Section 6.2 (e.g., Auto/Resend Flag, Submit Time, From Date, To Date) should appear in Section 3.1 Input; flag any parameter in 6.2 that has no corresponding entry in 3.1
+
+**Section 6.5 Validations & error handling:**
+- Every error code referenced in Section 6.5 must appear in Section 5 Logging Messages (or the Common Errors reference page linked from Section 5); flag any code that cannot be traced
+- Conditional mandatory rules (e.g., Engine fields mandatory for Non-EV, Motor fields mandatory for BEV) must correspond to fields flagged as Mandatory in the Interface File Format Excel; flag any mandatory field in the Excel that has no validation in 6.5
+- Step numbering gaps in Sections 6.3/6.4 — a sub-step is referenced but that number is not defined
+
+**Cross-section consistency:**
+- Section 1.2 Post Condition vs Section 3.2 Output — same check as SP pages (output tables/files written must appear in both)
+- Section 3.2 Output file name pattern must match the file name format constructed in Section 6.4.1 (Header record); flag any mismatch in naming convention
+- Section 4 Batch Type / Protocol vs Section 10 Destination/Source/Archive Path — the transfer protocol (e.g., SFTP) and schedule stated in Section 4 should be consistent with the paths and protocol described in Section 10; flag if one says SFTP and the other implies a different mechanism
+
 ## Step 5: Write the report
 
 Start with a one-line summary. Then group all issues under three severity headings. End with a brief "What to do next" section.
@@ -270,14 +310,15 @@ Start with a one-line summary. Then group all issues under three severity headin
 
 [Include this section only if there are sync issues between the field specification Excel and the rest of the document:
 - **Screen pages** — Item Description Excel vs Display Order
-- **Report pages** — Report Items Excel vs Display Order
+- **Report pages** — Report Items Excel vs Display Order (Printing Order)
 - **Stored Procedure pages** — Data Map Excel vs Section 3 Input/Output, Section 5 Logging Messages, and Section 6 Functional Description
+- **Interface pages** — Interface File Format Excel vs Section 6.4 Record construction & mapping
 
 Omit entirely if everything is in sync — or if the Excel could not be read, note that explicitly here instead.]
 
 | # | Issue | Location | Suggested Fix |
 |---|-------|----------|---------------|
-| 1 | [What's wrong — e.g., "Field 'Scan Date' is in Display Order but missing from Item Description Excel" or "Destination block for tb_inv_r_sap_d has blank DB/File Name" or "Q3.5 referenced in destination but Q3 only defines Q3.1–Q3.3"] | [Display Order / Item Description Excel / Report Items Excel / Data Map Excel / Section 3.1 Input / Section 3.2 Output / Section 5 / Functional Description §N] | [What to change and where] |
+| 1 | [What's wrong — e.g., "Field 'Scan Date' is in Display Order but missing from Item Description Excel" or "Destination block for tb_inv_r_sap_d has blank DB/File Name" or "Q3.5 referenced in destination but Q3 only defines Q3.1–Q3.3" or "Field 'Engine No' in Interface File Format Excel but no mapping in Section 6.4.2"] | [Display Order / Item Description Excel / Report Items Excel / Data Map Excel / Interface File Format Excel / Section 3.1 Input / Section 3.2 Output / Section 5 / Section 6.4 / Functional Description §N] | [What to change and where] |
 | 2 | ... | ... | ... |
 
 [If the Excel could not be read because it is a binary attachment:]
