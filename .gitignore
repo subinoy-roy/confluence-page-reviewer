@@ -5,6 +5,6 @@
 *.skill
 Report_*.md
 .claude-plugin/
-__pycache__/
+.script/__pycache__/
 *.bak
 plugins/
