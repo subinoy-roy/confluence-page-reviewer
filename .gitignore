@@ -4,3 +4,7 @@
 *.tar.gz
 *.skill
 Report_*.md
+.claude-plugin/
+__pycache__/
+*.bak
+plugins/
