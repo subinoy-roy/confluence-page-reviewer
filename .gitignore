@@ -8,3 +8,4 @@ Report_*.md
 .script/__pycache__/
 *.bak
 plugins/
+*.html

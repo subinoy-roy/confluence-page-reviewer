@@ -9,6 +9,14 @@ You will audit a Confluence page and report all quality issues found, grouped by
 
 > **Script paths:** Commands below reference scripts as `<skill-dir>/scripts/`. The skill's base directory is provided when the skill loads (look for "Base directory for this skill: /path/to/..." in the context). Substitute `<skill-dir>` with that path.
 
+## Step 0: Choose report format
+
+Before doing anything else, ask the user:
+
+> "Would you like the report saved as **Markdown** (.md) or **HTML** (.html)?"
+
+Wait for their answer and store it as `report_format` (`markdown` or `html`). Use it in Step 6 to determine how to save the report.
+
 ## Step 1: Parse the URL and determine page type
 
 Extract the `cloudId` and `pageId` from the URL the user provides. Confluence URLs come in a few forms:
@@ -240,9 +248,118 @@ If a category has no issues, omit it. If the Field Specification Issue List has 
 
 ## Step 6: Save the report to a file
 
-After writing the report, save it using the Write tool (not a shell command — the report content contains special characters that break shell quoting):
+Save using the Write tool (not a shell command — the report content contains special characters that break shell quoting). Get the timestamp first via Bash: `date +%Y%m%d%H%M%S`.
 
-- Filename: `Report_<functionCode>_<yyyyMMddHHmmss>.md` if a function code is present (e.g. `Report_BINV00150_20260523003108.md`). Fall back to `Report_<pageId>_<yyyyMMddHHmmss>.md` only if the page has no function code.
-- Get the timestamp from: `date +%Y%m%d%H%M%S` via Bash
-- Write the full report content to that filename in the current working directory
-- Tell the user the full file path once saved
+Use the base name `Report_<functionCode>_<timestamp>` (fall back to `Report_<pageId>_<timestamp>` if no function code).
+
+### If `report_format` is `markdown`
+
+Write the report template from Step 5 verbatim to `<base name>.md`.
+
+### If `report_format` is `html`
+
+Write a self-contained HTML file (`<base name>.html`) using the template below. Fill in all placeholders with the actual report content. All CSS is inline so the file opens correctly in any browser without external dependencies.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confluence Page Review: {PAGE_TITLE}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 1100px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .summary-badge { display: inline-block; background: #f0f0f0; border-radius: 6px; padding: 6px 14px; font-size: 0.9rem; color: #444; margin-bottom: 28px; }
+  .summary-badge .c { color: #c0392b; font-weight: 600; }
+  .summary-badge .w { color: #b7770d; font-weight: 600; }
+  .summary-badge .s { color: #27ae60; font-weight: 600; }
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 24px 0; }
+  h2 { font-size: 1.05rem; margin-top: 28px; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { background: #f0f0f0; text-align: left; padding: 9px 12px; border: 1px solid #d0d0d0; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
+  td { padding: 10px 12px; border: 1px solid #ddd; vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+  .badge-critical { background: #fdecea; color: #c0392b; }
+  .badge-warning  { background: #fef8e7; color: #b7770d; }
+  .badge-suggest  { background: #eafaf1; color: #27ae60; }
+  .location { font-style: italic; color: #666; font-size: 0.85rem; }
+  .next-steps { background: #f0f7ff; border-radius: 6px; padding: 14px 18px; margin-top: 24px; font-size: 0.95rem; }
+  .next-steps h2 { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<h1>Confluence Page Review: {PAGE_TITLE}</h1>
+<div class="summary-badge">
+  <span class="c">{N_CRITICAL} critical</span> &nbsp;·&nbsp;
+  <span class="w">{N_WARNINGS} warnings</span> &nbsp;·&nbsp;
+  <span class="s">{N_SUGGESTIONS} suggestions</span>
+</div>
+
+<hr>
+
+<!-- Single table with all issues ordered Critical → Warning → Suggestion -->
+<table>
+  <thead>
+    <tr>
+      <th style="width:3%">#</th>
+      <th style="width:9%">Severity</th>
+      <th style="width:18%">Issue</th>
+      <th style="width:20%">Location</th>
+      <th style="width:25%">Problem</th>
+      <th style="width:25%">Suggested Fix</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- One <tr> per issue. Use the badge class matching the severity. -->
+    <tr>
+      <td>{N}</td>
+      <td><span class="badge badge-critical">🔴 Critical</span></td>
+      <td><strong>{ISSUE_TYPE}</strong></td>
+      <td class="location">{LOCATION}</td>
+      <td>{PROBLEM}</td>
+      <td>{FIX}</td>
+    </tr>
+    <tr>
+      <td>{N}</td>
+      <td><span class="badge badge-warning">🟡 Warning</span></td>
+      <td><strong>{ISSUE_TYPE}</strong></td>
+      <td class="location">{LOCATION}</td>
+      <td>{PROBLEM}</td>
+      <td>{FIX}</td>
+    </tr>
+    <tr>
+      <td>{N}</td>
+      <td><span class="badge badge-suggest">🟢 Suggestion</span></td>
+      <td><strong>{ISSUE_TYPE}</strong></td>
+      <td class="location">{LOCATION}</td>
+      <td>{PROBLEM}</td>
+      <td>{FIX}</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- Include this section only if there are field specification sync issues; omit entirely otherwise -->
+<h2>📋 Field Specification Issue List</h2>
+<table>
+  <thead><tr><th>#</th><th>Issue</th><th>Location</th><th>Suggested Fix</th></tr></thead>
+  <tbody>
+    <!-- Repeat for each row: -->
+    <tr><td>{N}</td><td>{ISSUE}</td><td>{LOCATION}</td><td>{FIX}</td></tr>
+  </tbody>
+</table>
+
+<div class="next-steps">
+  <h2>📋 What to do next</h2>
+  <p>{NEXT_STEPS}</p>
+</div>
+
+</body>
+</html>
+```
+
+Tell the user the full file path once saved.
