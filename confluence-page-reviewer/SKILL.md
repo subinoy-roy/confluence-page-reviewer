@@ -100,28 +100,56 @@ The type-specific reference file describes what the Excel contains and its struc
 
 **First — Check if it's already rendered in the page body.** Look at the relevant section in the fetched markdown ("Item Description", "Report Items", "Data Map", or "Interface File Format"). If the Excel was embedded via a Confluence "View File" macro it may have rendered as a table — use that directly and skip to Step 3c. This is particularly likely when using Option C (Word export).
 
-**If the section contains only image or blob URLs with no table content**, check the attachment list from Step 3a:
+**If the section contains only image or blob URLs with no table content**, do NOT rely on the CQL attachment search result from Step 3a — it is unreliable for embedded media and can return 0 even when a file exists. Instead, **always fetch the page in HTML format** (`contentFormat: "html"`) and inspect the relevant section's HTML to determine the true state.
 
-- **No attachment found AND section is image-only** — flag immediately as **Critical**: "The [Item Description / Report Items / Data Map / Interface File Format] section contains only an embedded image. There is no attached Excel file. Field specifications cannot be verified at all — the author must attach the Excel file before this DR can be reviewed." Do not ask the user to download; there is nothing to download.
-- **Attachment found but not rendered** — STOP and ask the user to download the file:
+**Reading the HTML to classify the media type:**
+
+Look for the element inside the field specification section heading. Two patterns exist:
+
+- **File attachment (not rendered):**
+  ```html
+  <div data-type="media-group">
+    <div data-type="media" data-media-type="file" data-id="..." data-collection="..."></div>
+  </div>
+  ```
+  A `media-group` container with `data-media-type="file"` is a non-image file attachment (e.g., an Excel or PDF). The file **exists on the page** but cannot be read inline.
+
+- **Embedded image (no file):**
+  ```html
+  <figure data-type="media-single" ...>
+    <div data-type="media" data-media-type="file" data-width="..." data-height="...">image-filename.png</div>
+  </figure>
+  ```
+  A `media-single` container with pixel dimensions and an image filename is an embedded screenshot or diagram — not an Excel file.
+
+**Once the media type is confirmed, apply the matching action:**
+
+- **File attachment confirmed (`media-group`)** — STOP and ask the user to download the file:
 
 > "I can see the [Item Description / Report Items / Data Map / Interface File Format] Excel is embedded on the page but I can't read it directly. Could you download it from Confluence (click the file to open it, then download) and share the local path?"
 
-Once the user provides the path, run:
+- **Image only confirmed (`media-single` with dimensions), OR no media element found at all** — inform the user and ask them to provide the file:
+
+> "I wasn't able to find the [Item Description / Report Items / Data Map / Interface File Format] Excel on this page — the section appears to contain only an image with no attached file. If you have the Excel, please share the local path and I'll include a field-level cross-check in the review."
+
+**In both cases above**, once the user provides a local path, run:
 ```bash
 python3 <skill-dir>/scripts/excel_parser.py --file /path/to/downloaded/file.xlsx
 ```
+Then proceed to Step 3c.
 
-If the user cannot or will not provide the file:
-- Check the HTML format of the page (`contentFormat: "html"`) for `data-type="media"` and `data-media-type="file"` elements inside the relevant section — these confirm the file exists even if unreadable.
-- Flag as **Critical** in the report: "The [Item Description / Report Items / Data Map / Interface File Format] Excel is attached to the page but its content could not be read. Field specifications cannot be verified — manual review of the attached file is required before this DR can be approved."
+**If the user says they cannot provide the file** — flag as **Critical** in the report:
+- For the "file attachment exists" case: "The [Item Description / Report Items / Data Map / Interface File Format] Excel is attached to the page but its content could not be read. Field specifications cannot be verified — the author must make the file readable before this DR can be approved."
+- For the "image only / not found" case: "The [Item Description / Report Items / Data Map / Interface File Format] section contains no attached Excel file. Field specifications cannot be verified at all — the author must attach the Excel file before this DR can be approved."
+
+Then continue to Step 4 — do not block the rest of the review. The remaining checks (structure, logic, IS comments, message codes, etc.) proceed normally; only Step 3c is skipped.
 
 Always distinguish between three states — they require different actions:
-| State | Action |
-|---|---|
-| Section has a rendered table | Use it directly; skip to Step 3c |
-| Section has only an image, no attachment | Flag as Critical immediately |
-| Attachment exists but not rendered | Ask user to download; if they cannot provide it, flag as Critical |
+| State | How to detect | Action |
+|---|---|---|
+| Section has a rendered table | Markdown shows table rows | Use it directly; skip to Step 3c |
+| File attachment exists but not rendered | HTML: `media-group` + `data-media-type="file"` | Ask user to download; if they cannot → Critical + continue |
+| Image only or no file found | HTML: `media-single` with dimensions, or no media element | Ask user to provide; if they cannot → Critical + continue |
 
 ### 3c. Cross-check field specification Excel
 
@@ -189,6 +217,22 @@ Before writing any findings, group the merged comment list by comment body text.
 - **Unresolved comments** — flag each distinct comment group as a Warning; include the comment text, the number of occurrences, and the affected selections so the author knows exactly what to fix
 - **Common IS feedback not addressed** — if the page contains a link to a common IS feedback checklist (typically near the reviewer section or in a note at the bottom), verify that the standard points from that checklist are visibly addressed in the document; flag as Warning if the link is present but there is no indication the points were reviewed
 
+### Excerpt-include macros (message codes hidden in markdown)
+
+The Confluence markdown API silently drops `data-type="inline-extension"` macro content. This commonly affects message codes embedded via the **excerpt-include** macro, which pulls a message definition from a shared "Common Errors" page. In the markdown render these appear as blank text immediately after a label like "Display success message:" or "No Change Validation:". Do not flag these as missing content based on the markdown alone.
+
+**When you see a step that should reference a message code but the markdown shows nothing after the label**, fetch the HTML format and look for:
+
+```html
+<span data-type="inline-extension" data-extension-key="excerpt-include"
+      data-parameters="{&quot;macroParams&quot;:{&quot;name&quot;:{&quot;value&quot;:&quot;WRN00002&quot;},...}}">
+</span>
+```
+
+Extract the `name` value from `data-parameters` — that is the message code being referenced (e.g., `WRN00002`, `INF000001`). Treat it as a valid code reference and apply normal message code validation rules to it.
+
+Only flag a message reference as missing if: (a) the markdown shows nothing **and** (b) the HTML confirms no `inline-extension` element is present at that location.
+
 ### Message code validation (all page types)
 
 Message codes appear in Section 5 Logging Messages and throughout the Functional Description. There are two distinct formats — always classify each code before checking it.
@@ -203,7 +247,7 @@ Derive the running ID section by stripping the page-type prefix and module name 
 - `BVSC00100` → strip `B` + `VSC` → running ID = `00100`
 - `WINV0010` → strip `W` + `INV` → running ID = `0010`
 
-Module identifiers: `I` (INV), `V` (VSC), `D` (DLR), `N` (DNS). Same structure applies to `WRN` (warnings), `INV` (information), and `CNF` (confirmation).
+Module identifiers: `I` (INV), `V` (VSC), `D` (DLR), `N` (DNS), `A` (ADM). Same structure applies to `WRN` (warnings), `INV` (information), and `CNF` (confirmation).
 - Verify the module letter matches the page's module (e.g., a `BVSC00100` page should only use `V` codes)
 - Flag any code whose module letter doesn't match the page's module as a likely copy-paste from another module
 
