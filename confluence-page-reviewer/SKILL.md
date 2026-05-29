@@ -155,6 +155,23 @@ Read the full page content carefully and check for all of the following. **Also 
 - Check whether the page's narrative is consistent with what the attachments are described as containing
 - Flag any discrepancies between attachment names and how they're described in the body
 
+### Document metadata
+- **Reviewer name and date blank** — if the page has a reviewer or approver field, flag it as a Warning if it is empty or contains placeholder text (e.g., "TBD", "[Name]", "N/A")
+- **Version history absent** — the page should have a version history table recording changes over time; flag as Warning if entirely absent or empty
+
+### Standard notation
+- **Abbreviations missing trailing dot** — check abbreviations such as "No", "Cnt", "Qty", "Sr"; the correct form is "No.", "Cnt.", "Qty.", "Sr." — flag each instance where the dot is omitted
+- **Singular noun for multiple objects** — when a sentence describes more than one item (screens, tables, files, batches), the noun should be plural; flag where singular is incorrectly used for multiple objects
+- **Special conditions unmarked** — when the same condition or exception applies to multiple line items, it should be marked with `*` and explained in a clearly labelled note at the bottom of the page; flag as Suggestion if such a pattern exists in the document but the `*` notation and end-of-page note are absent
+
+### Examples and scenarios
+- **No examples for complex logic** — if the Functional Description contains calculations, conditional derivations, or multi-step business rules, at least one worked example must be present; flag as Warning if none exists
+- **Incomplete examples** — each example should: (a) state its purpose before showing any data, (b) show input/source data, and (c) show what changed after the calculation or operation; flag any example that skips one of these three parts
+
+### IS feedback
+- **Unresolved comments** — use `getConfluencePageFooterComments` and `getConfluencePageInlineComments` to fetch all page comments; flag any open or unresolved comment as a Warning, since it may represent feedback that should be incorporated into the document body before it is considered final
+- **Common IS feedback not addressed** — if the page contains a link to a common IS feedback checklist (typically near the reviewer section or in a note at the bottom), verify that the standard points from that checklist are visibly addressed in the document; flag as Warning if the link is present but there is no indication the points were reviewed
+
 ### Message code validation (all page types)
 
 Message codes appear in Section 5 Logging Messages and throughout the Functional Description. There are two distinct formats — always classify each code before checking it.
