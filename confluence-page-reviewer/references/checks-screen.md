@@ -35,6 +35,7 @@ Check for:
 ### Button Control section
 - **Button not documented** — every button referenced in the Display Order must have a corresponding entry in the Button Control section describing its functionality; flag any button missing from Button Control
 - **Button Control section absent** — if the screen has any action buttons but no Button Control section exists, flag as Critical
+- **Button State vs Button Control mismatch** — compare the button names listed as columns in the Button State table (Section 3) against the button column headers in the Button Control table (Section 4.b); any button present in one table but absent from the other is a Critical issue, as the enable/disable behaviour for that button across screen modes is either undefined or undocumented in the access specification
 
 ### UX link
 - **UX link absent** — for screens with a new UI design, a UX link must be present in the document; flag as Warning if missing
@@ -57,6 +58,8 @@ Check for:
 
 ### Logging and Audit Trail
 - **Logging/Audit Trail section missing or incomplete** — the section must have two explicit subsections: (a) **Logging** — tracking every update and delete operation (who and when); (b) **Audit Trail** — PDPA-related log of who changed what, and old vs new values; flag as Warning if either subsection is absent or contains only placeholder text
+- **Logging marked N/A despite CRUD operations** — if Section 10 describes any Add, Edit, or Delete operation but the Logging section is marked N/A, flag as **Warning**: "Logging is marked N/A but the screen performs data modifications. Please confirm with IS whether operation logging is required."
+- **Audit Trail marked N/A without confirmation** — if Section 10 modifies data and the Audit Trail section is marked N/A, flag as **Warning**: "Audit Trail is marked N/A but the screen writes data. Please confirm with IS whether PDPA-related audit trail logging (who changed what, old vs new values) applies to this screen."
 
 ### Like search / wildcard
 - **Wildcard search not documented** — if the screen has any free-text search fields, the document must specify that `*` (asterisk) is the wildcard character, with examples (`*THE*` to find records containing "THE", etc.); flag as Warning if absent

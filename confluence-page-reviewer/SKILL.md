@@ -100,7 +100,10 @@ The type-specific reference file describes what the Excel contains and its struc
 
 **First — Check if it's already rendered in the page body.** Look at the relevant section in the fetched markdown ("Item Description", "Report Items", "Data Map", or "Interface File Format"). If the Excel was embedded via a Confluence "View File" macro it may have rendered as a table — use that directly and skip to Step 3c. This is particularly likely when using Option C (Word export).
 
-**If not rendered — STOP and ask the user to download the file.**
+**If the section contains only image or blob URLs with no table content**, check the attachment list from Step 3a:
+
+- **No attachment found AND section is image-only** — flag immediately as **Critical**: "The [Item Description / Report Items / Data Map / Interface File Format] section contains only an embedded image. There is no attached Excel file. Field specifications cannot be verified at all — the author must attach the Excel file before this DR can be reviewed." Do not ask the user to download; there is nothing to download.
+- **Attachment found but not rendered** — STOP and ask the user to download the file:
 
 > "I can see the [Item Description / Report Items / Data Map / Interface File Format] Excel is embedded on the page but I can't read it directly. Could you download it from Confluence (click the file to open it, then download) and share the local path?"
 
@@ -109,11 +112,16 @@ Once the user provides the path, run:
 python3 <skill-dir>/scripts/excel_parser.py --file /path/to/downloaded/file.xlsx
 ```
 
-**Only if the user explicitly says they cannot provide the file:**
+If the user cannot or will not provide the file:
 - Check the HTML format of the page (`contentFormat: "html"`) for `data-type="media"` and `data-media-type="file"` elements inside the relevant section — these confirm the file exists even if unreadable.
-- Flag in the report: the file exists but its content could not be read automatically, and manual verification is needed.
+- Flag as **Critical** in the report: "The [Item Description / Report Items / Data Map / Interface File Format] Excel is attached to the page but its content could not be read. Field specifications cannot be verified — manual review of the attached file is required before this DR can be approved."
 
-Always distinguish between "file is missing" and "file exists but content cannot be read automatically" — these are very different problems.
+Always distinguish between three states — they require different actions:
+| State | Action |
+|---|---|
+| Section has a rendered table | Use it directly; skip to Step 3c |
+| Section has only an image, no attachment | Flag as Critical immediately |
+| Attachment exists but not rendered | Ask user to download; if they cannot provide it, flag as Critical |
 
 ### 3c. Cross-check field specification Excel
 
@@ -169,7 +177,16 @@ Read the full page content carefully and check for all of the following. **Also 
 - **Incomplete examples** — each example should: (a) state its purpose before showing any data, (b) show input/source data, and (c) show what changed after the calculation or operation; flag any example that skips one of these three parts
 
 ### IS feedback
-- **Unresolved comments** — use `getConfluencePageFooterComments` and `getConfluencePageInlineComments` to fetch all page comments; flag any open or unresolved comment as a Warning, since it may represent feedback that should be incorporated into the document body before it is considered final
+
+**Fetching all comments (pagination required):**
+1. Call `getConfluencePageInlineComments` with `resolutionStatus: "open"`. If the response contains `_links.next`, call again with the `cursor` value from that link. Repeat until no `next` link is present. Merge all results into one list.
+2. Call `getConfluencePageFooterComments`. Paginate the same way if a `next` link is present.
+
+**Grouping before reporting:**
+Before writing any findings, group the merged comment list by comment body text. Comments with identical (or near-identical) body text on different selections are **one finding** with multiple locations — not N separate findings. Report the group as a single Warning, listing all affected selections as a comma-separated location string (e.g., *"Near: 'TB_DNS_M_SERIES', 'TB_DNS_M_MODEL', 'tb_dns_m_dcm' (and 17 more)"*).
+
+**Checks:**
+- **Unresolved comments** — flag each distinct comment group as a Warning; include the comment text, the number of occurrences, and the affected selections so the author knows exactly what to fix
 - **Common IS feedback not addressed** — if the page contains a link to a common IS feedback checklist (typically near the reviewer section or in a note at the bottom), verify that the standard points from that checklist are visibly addressed in the document; flag as Warning if the link is present but there is no indication the points were reviewed
 
 ### Message code validation (all page types)
@@ -220,12 +237,24 @@ Start with a one-line summary. Then group all issues under three severity headin
 - The page title if the issue is structural: *"Page-level"*
 - The attachment name: *"Attachment: Q4_Process_v2.pdf"*
 
+### Verdict logic
+
+Determine the readiness verdict based on critical issue count before writing the report:
+
+- **0 critical issues** → `✅ Ready for sign-off review — no critical issues found.`
+- **0 critical, 1+ warnings** → `🟡 Conditionally ready — no critical issues, but {N} warning(s) should be reviewed before approval.`
+- **1+ critical issues** → `🔴 Not ready for sign-off — {N} critical issue(s) must be resolved before this DR can be approved.`
+
 ### Report template
 
 ```
 ## Confluence Page Review: [Page Title]
 
+**Page:** [Confluence URL] | **Last modified:** [date from API] | **Report generated:** [current date]
+
 **[X critical issues · Y warnings · Z suggestions]**
+
+> [Verdict line from verdict logic above]
 
 ---
 
@@ -304,16 +333,31 @@ Write a self-contained HTML file (`<base name>.html`) using the template below. 
   .location { font-style: italic; color: #666; font-size: 0.85rem; }
   .next-steps { background: #f0f7ff; border-radius: 6px; padding: 14px 18px; margin-top: 24px; font-size: 0.95rem; }
   .next-steps h2 { margin-top: 0; }
+  .meta { font-size: 0.82rem; color: #666; margin-bottom: 12px; }
+  .meta a { color: #2563eb; text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .verdict { display: inline-block; border-radius: 6px; padding: 7px 14px; font-size: 0.9rem; font-weight: 600; margin-bottom: 24px; }
+  .verdict-critical { background: #fdecea; color: #c0392b; border: 1px solid #f5c6c2; }
+  .verdict-warning  { background: #fef8e7; color: #b7770d; border: 1px solid #f0d060; }
+  .verdict-ready    { background: #eafaf1; color: #27ae60; border: 1px solid #a9dfc0; }
 </style>
 </head>
 <body>
 
 <h1>Confluence Page Review: {PAGE_TITLE}</h1>
+<p class="meta">
+  <a href="{PAGE_URL}" target="_blank">View page in Confluence</a>
+  &nbsp;·&nbsp; Last modified: {LAST_MODIFIED}
+  &nbsp;·&nbsp; Report generated: {REPORT_DATE}
+</p>
 <div class="summary-badge">
   <span class="c">{N_CRITICAL} critical</span> &nbsp;·&nbsp;
   <span class="w">{N_WARNINGS} warnings</span> &nbsp;·&nbsp;
   <span class="s">{N_SUGGESTIONS} suggestions</span>
 </div>
+<br>
+<!-- Verdict: use class verdict-critical / verdict-warning / verdict-ready depending on issue count -->
+<div class="verdict {VERDICT_CLASS}">{VERDICT_TEXT}</div>
 
 <hr>
 

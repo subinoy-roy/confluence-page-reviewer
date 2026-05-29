@@ -15,6 +15,7 @@ Check for:
 - **Columns in the Excel not in Display Order** — orphaned Excel entry for a column not in the report
 - **Name mismatches** — same column with different labels
 - **Property contradictions** — column properties in Excel (data type, format, sort/group flag) contradict what the Operation Description says
+- **Sort/Group flag vs Section 6 mismatch** — for every column marked with a Sort or Group flag in the Excel, verify that Section 6 Functional Description contains a corresponding ORDER BY or GROUP BY clause for that column; conversely, if Section 6 orders or groups by a column that is not flagged in the Excel, that is also an inconsistency; flag each mismatch as a Warning
 - **Missing Excel entirely** — no table content and no `.xlsx` attachment in the "Report Items" section
 
 ## Step 4: Additional checks for Report pages
@@ -26,11 +27,31 @@ Check for:
 ### Legacy function reference
 - **Legacy function ID absent** — the document should state the equivalent legacy system function ID or reference number; if this field is blank, missing, or marked N/A without explanation, flag as Warning
 
+### Display Order vs Section 6 Functional Description
+- **Column with no documented source** — for every column listed in the Display Order, Section 6 must identify where its value comes from: the source table and field, or the derivation/calculation logic; a column present in Display Order but with no corresponding source or derivation in Section 6 means a developer must guess its origin — flag as Critical for each such column
+- **Column sourced in Section 6 but absent from Display Order** — if Section 6 describes deriving or fetching a field that does not appear in the Display Order, either the column was dropped from the output without removing its logic, or it was added to the logic without being declared in the output specification — flag as Critical
+
+### Section 3.1 Input parameters vs Section 6 Functional Description
+- **Declared filter parameter not used in Section 6** — for every filter/search parameter listed in Section 3.1 Input, verify it appears by name in the Section 6 WHERE clause or filter logic; a parameter declared but never applied in the query is stale and misleads callers — flag as Critical
+- **Undeclared parameter used in Section 6** — if Section 6 references a filter or input parameter in its WHERE clause or logic that does not appear in Section 3.1 Input, that parameter has no documented type, label, or contract for the user interface — flag as Critical
+
 ### Report layout
 - **Layout does not match user requirements** — the Display Order / report layout section should reflect the agreed user requirements; flag if the layout appears to be a template placeholder rather than the actual agreed design
 - **No actual sample data in layout** — the report layout should show realistic sample data (not blank or "xxx" placeholders) so the reader can verify the format and content; flag if sample data is absent
 - **Inquiry criteria and detail data mismatch** — if the report has both an inquiry/filter section and a detail output section, the sample data in the detail section must be consistent with the inquiry criteria shown; flag any mismatch
 - **Sorting order not specified or incorrect** — the report layout must show data in the agreed sorting order; flag if sort order is unspecified or contradicts the Functional Description
+
+### Empty result handling
+- **No-data behaviour not documented** — the document must state what is printed when no records match the filter criteria; the expected behaviour is: a blank report with the applicable header and footer is printed, with no error message; flag as Warning if this is not mentioned anywhere in the Functional Description or report layout notes
+
+### Report header and footer
+- **Header/footer not addressed** — every report must explicitly state whether a header and footer apply; if the document makes no mention of either, flag as Warning
+- **Header applies but content not specified** — if the document states a header is present, its content must be described (e.g., report title, run date, filter criteria used, company name); flag as Warning if the header is mentioned but its content is not defined
+- **Footer applies but content not specified** — if the document states a footer is present, its content must be described (e.g., page number, total record count, timestamp); flag as Warning if the footer is mentioned but its content is not defined
+- **Header or footer not applicable — must be explicitly stated** — if header or footer does not apply to this report, the document must explicitly say so (e.g., "No header", "Footer: N/A"); silence is not acceptable as it leaves the developer guessing; flag as Warning if either is simply absent from the document
+
+### Totals and subtotals
+- **Grouping without subtotals documented** — if any column in the Report Items Excel is marked as grouped, the Display Order or Section 6 Functional Description must document the corresponding subtotal and grand total rows (what is summed/counted, where they appear, and their label); if grouping exists but no totals are mentioned anywhere in the document, flag as Warning
 
 ### UX link and layout
 - **UX link absent for new UI** — for reports with a new UI, either a UX design link or a layout Excel should be present; flag as Warning if neither is provided
