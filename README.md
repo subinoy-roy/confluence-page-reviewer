@@ -27,13 +27,18 @@ Each page type has its own set of additional checks defined in [`confluence-page
 
 ## Output
 
-The skill produces a Markdown report grouped by severity:
+At the start of each review the skill asks whether you want the report saved as **Markdown** or **HTML**. Both formats cover the same content grouped by severity:
 
 - **Critical** — a reader could take the wrong action or miss a required step
 - **Warning** — a reader would be confused or need to seek clarification
 - **Suggestion** — minor clarity or formatting improvements
 
-The report is saved to the current working directory as `Report_<functionCode>_<timestamp>.md`.
+| Format | Filename | Description |
+|---|---|---|
+| Markdown | `Report_<functionCode>_<timestamp>.md` | Plain text, renders in any Markdown viewer |
+| HTML | `Report_<functionCode>_<timestamp>.html` | Self-contained file with a sortable table, severity badges, and alternating row shading — opens in any browser with no external dependencies |
+
+The HTML report presents all issues in a single table with columns for severity, issue type, location, problem description, and suggested fix.
 
 ## Installation
 
