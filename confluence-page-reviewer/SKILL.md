@@ -214,7 +214,9 @@ Read the full page content carefully and check for all of the following. **Also 
 Before writing any findings, group the merged comment list by comment body text. Comments with identical (or near-identical) body text on different selections are **one finding** with multiple locations — not N separate findings. Report the group as a single Warning, listing all affected selections as a comma-separated location string (e.g., *"Near: 'TB_DNS_M_SERIES', 'TB_DNS_M_MODEL', 'tb_dns_m_dcm' (and 17 more)"*).
 
 **Checks:**
-- **Unresolved comments** — flag each distinct comment group as a Warning; include the comment text, the number of occurrences, and the affected selections so the author knows exactly what to fix
+- **Unresolved comments** — flag each distinct comment group as a Warning; include the comment text, the number of occurrences, and the affected selections so the author knows exactly what to fix. For each comment (or comment group), construct a direct link to the comment in Confluence using the format:
+  `{PAGE_URL}?focusedCommentId={COMMENT_ID}`
+  where `{COMMENT_ID}` is the `id` field from the API response. For a group with multiple comment IDs, link to the first one. In the HTML report, render this as a small "View in Confluence →" anchor in the Location cell so the reviewer can jump directly to the highlighted selection.
 - **Common IS feedback not addressed** — if the page contains a link to a common IS feedback checklist (typically near the reviewer section or in a note at the bottom), verify that the standard points from that checklist are visibly addressed in the document; flag as Warning if the link is present but there is no indication the points were reviewed
 
 ### Excerpt-include macros (message codes hidden in markdown)
@@ -254,6 +256,13 @@ Module identifiers: `I` (INV), `V` (VSC), `D` (DLR), `N` (DNS), `A` (ADM). Same 
 **Malformed codes** — any code that fits neither pattern should be flagged as a Warning.
 
 When Section 5 contains only a link to the Common Errors page and no page-specific entries, that is acceptable — but any page-specific code referenced in the Functional Description must still be listed in Section 5.
+
+**HTML report: anchor links for page-specific codes**
+When generating an HTML report, every occurrence of a page-specific error code in the issues table (Problem and Suggested Fix columns) must be rendered as an anchor link:
+```html
+<a href="#code-ERRV001105">ERRV001105</a>
+```
+The target `id` is `code-{CODE}` on the corresponding row of the Screen Specific Errors Reference table (see Step 6). This lets the reviewer click any code in the issues table and immediately see its full definition — message text, Thai translation, and action — without returning to Confluence.
 
 ## Step 5: Write the report
 
