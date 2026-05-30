@@ -78,5 +78,9 @@ These checks cannot be automated — always include them as a reminder block in 
 - **Dummy Dealer handling** — if the report shows dealer information: (a) a specific dealer sees only their own data; (b) Dummy Dealer is hidden from roles without that privilege; (c) only roles with explicit privilege can see Dummy Dealer; if VIN or booking data is shown, check with SA separately
 - **Toyota heading** — confirm that "Toyota" does not appear in the top-left heading of the report unless specifically required; check with SA if in doubt
 
+### Error code hyperlink integrity
+- **Error code not hyperlinked in Functional Description** — every error code cited in the Functional Description (Section 6) must be a hyperlink pointing to the corresponding anchor on the matching row in the Specific Errors table (Section 5 Logging Messages); a plain-text code with no link forces readers to scroll and search manually and makes stale references invisible — flag as Warning for each code that appears as plain text rather than a hyperlink
+- **Hyperlink target missing in Logging Messages table** — if an error code in the Functional Description is hyperlinked but the target anchor does not exist in Section 5 (i.e., the code is absent from the table), the link is broken and the error is undocumented — flag as Critical
+
 ### Function list CR check
 - **Pending CRs not considered** — always include a reminder in the report: "Manually verify in the Function List with CR document whether any pending CRs are related to this DR"

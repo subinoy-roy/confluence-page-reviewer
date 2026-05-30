@@ -50,6 +50,10 @@ Check for:
 ### Screen-specific error codes
 - **Errors not in Error Master Excel** — screen-specific error codes must be maintained in the Error Master Excel; always include a reminder in the report: "Manually verify that all screen-specific error codes for this DR are recorded in the Error Master Excel"
 
+### Error code hyperlink integrity
+- **Error code not hyperlinked in Operation Description** — every error code cited in the Operation Description (Section 10) must be a hyperlink pointing to the corresponding anchor on the matching row in the Specific Errors table (Section 9.2); a plain-text code with no link forces readers to scroll and search manually and makes stale references invisible — flag as Warning for each code that appears as plain text rather than a hyperlink
+- **Hyperlink target missing in Specific Errors table** — if an error code in the Operation Description is hyperlinked but the target anchor does not exist in Section 9.2 (i.e., the code is absent from the table), the link is broken and the error is undocumented — flag as Critical
+
 ### Performance section
 - **Performance section blank** — the Performance section must not be empty or contain only "N/A"; if it is blank, flag as Warning and note that expected content includes estimated data volume, response time targets, and pagination approach
 

@@ -53,6 +53,8 @@ Run three classes of checks:
 - **Undeclared parameter used in Section 6** — if Section 6 references a named parameter (e.g., used in a WHERE clause or assigned to a variable) that does not appear in Section 3.1, that parameter has no documented type, description, or contract; flag as Critical since callers have no specification for it
 
 ### Section 5 Logging Messages
+- **Error code not hyperlinked in Functional Description or Data Map** — every error code cited in Section 6 Functional Description or Section 7 Data Map must be a hyperlink pointing to the corresponding anchor on the matching row in Section 5 Logging Messages; a plain-text code with no link forces readers to scroll and search manually and makes stale references invisible — flag as Warning for each code that appears as plain text rather than a hyperlink
+- **Hyperlink target missing in Logging Messages table** — if an error code in Section 6 or Section 7 is hyperlinked but the target anchor does not exist in Section 5 (i.e., the code is absent from the table), the link is broken and the error is undocumented — flag as Critical
 - Duplicate S.No. values or gaps in the sequence — indicates rows were added/removed without renumbering
 - Two errors with identical descriptions and causes — impossible to distinguish; need unique descriptions or consolidation
 - Error codes referenced in the Functional Description or Data Map that are absent from this table
