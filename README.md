@@ -121,6 +121,143 @@ python3 confluence-page-reviewer/scripts/fetch_common_errors.py \
     └── confluence-page-reviewer/      # Installed copy — do not edit directly
 ```
 
+## Using with GitHub Copilot
+
+GitHub Copilot does not run Claude Code skills natively, but you can reproduce the full review workflow in Copilot Chat by using the helper scripts to fetch and parse the page content, then providing that content to Copilot with the `SKILL.md` as its instruction set.
+
+### Prerequisites
+
+- VS Code with the **GitHub Copilot** extension installed and signed in
+- **Python 3.8+** installed
+  - macOS: pre-installed or via `brew install python`
+  - Linux: `sudo apt install python3` (Debian/Ubuntu) or `sudo dnf install python3` (Fedora)
+  - Windows: download from [python.org](https://www.python.org/downloads/) — tick **"Add python.exe to PATH"** during install
+- This repository cloned locally
+
+### Step 1 — Install the Python dependency
+
+The scripts only require one external package (`requests`). Run this once in your terminal:
+
+```bash
+# macOS / Linux
+pip3 install requests
+
+# Windows (Command Prompt or PowerShell)
+pip install requests
+```
+
+### Step 2 — Set your Atlassian credentials
+
+Generate an API token at [id.atlassian.com → Security → API tokens](https://id.atlassian.com/manage-profile/security/api-tokens), then set the two environment variables below.
+
+**macOS / Linux (Bash or Zsh) — current session only:**
+```bash
+export ATLASSIAN_EMAIL="you@example.com"
+export ATLASSIAN_API_TOKEN="your-token-here"
+```
+
+To persist across sessions, add both lines to `~/.zshrc` (Zsh) or `~/.bashrc` (Bash) and run `source ~/.zshrc`.
+
+**Windows — Command Prompt (current session only):**
+```cmd
+set ATLASSIAN_EMAIL=you@example.com
+set ATLASSIAN_API_TOKEN=your-token-here
+```
+
+**Windows — PowerShell (current session only):**
+```powershell
+$env:ATLASSIAN_EMAIL = "you@example.com"
+$env:ATLASSIAN_API_TOKEN = "your-token-here"
+```
+
+To persist on Windows, open **System Properties → Advanced → Environment Variables** and add them as user variables.
+
+### Step 3 — Fetch the Confluence page content
+
+Open a terminal, navigate to the `confluence-page-reviewer/scripts/` directory, and run:
+
+```bash
+# macOS / Linux
+cd /path/to/confluence-page-reviewer/confluence-page-reviewer/scripts
+python3 confluence_api.py --cloud-id myco.atlassian.net --page-id 123456789 --fetch-page > page_content.md
+```
+
+```cmd
+:: Windows (Command Prompt)
+cd C:\path\to\confluence-page-reviewer\confluence-page-reviewer\scripts
+python confluence_api.py --cloud-id myco.atlassian.net --page-id 123456789 --fetch-page > page_content.md
+```
+
+Replace `myco.atlassian.net` with your Confluence cloud ID and `123456789` with the page ID from the URL.
+
+The page ID is the number in the URL, e.g. for:
+```
+https://myco.atlassian.net/wiki/spaces/DM/pages/1279557701/Title
+```
+the page ID is `1279557701`.
+
+### Step 4 — Download and parse the Item Description Excel
+
+1. Open the Confluence page in your browser
+2. Go to **Section 8 Item Description**, click the embedded Excel file, and download it
+3. Parse it with the script:
+
+```bash
+# macOS / Linux
+python3 excel_parser.py --file /path/to/ItemDescription.xlsx > excel_content.md
+```
+
+```cmd
+:: Windows
+python excel_parser.py --file C:\path\to\ItemDescription.xlsx > excel_content.md
+```
+
+### Step 5 — Run the review in Copilot Chat
+
+1. Open VS Code in the repository folder
+2. Open **Copilot Chat** (`Ctrl+Shift+I` on Windows/Linux, `⌘⇧I` on macOS)
+3. Type the following prompt, using `#file` to attach the relevant files:
+
+```
+I need you to review a Confluence page following the instructions in #file:confluence-page-reviewer/SKILL.md
+
+The page content (fetched from Confluence) is in #file:confluence-page-reviewer/scripts/page_content.md
+
+The Item Description Excel content is in #file:confluence-page-reviewer/scripts/excel_content.md
+
+Please follow the SKILL.md instructions step by step, starting from Step 4 (analysis). Skip Steps 2 and 3 — the page content and Excel are already provided above. Save the report as HTML.
+```
+
+> **Tip:** Copilot Chat's `#file` reference lets it read the full content of any file in your workspace. If a file is too large, break it into sections and reference them separately.
+
+### Step 6 — Save the report
+
+Copilot will produce the review text in chat. To save it as an HTML file:
+
+1. Copy the HTML output from Copilot Chat
+2. Paste it into a new file named `Report_<FunctionCode>_<timestamp>.html`
+3. Open the file in your browser — it is self-contained and needs no external resources
+
+Alternatively, ask Copilot to write the file directly using VS Code's built-in terminal or a code block you can save.
+
+### Notes for offline or restricted environments
+
+If the Confluence REST API is blocked, export the page from Confluence (**Page menu → Export → Word**) and parse it instead of using `confluence_api.py`:
+
+```bash
+# macOS / Linux
+python3 docx_parser.py --file /path/to/exported-page.doc > page_content.md
+```
+
+```cmd
+:: Windows
+python docx_parser.py --file C:\path\to\exported-page.doc > page_content.md
+```
+
+The `.doc` file produced by Confluence's Word export is actually an MHTML document — the script handles this automatically.
+
+---
+
 ## Updating the skill
 
 Always edit files under `confluence-page-reviewer/` (the source), never under `plugins/` (the installed copy). After making changes:
