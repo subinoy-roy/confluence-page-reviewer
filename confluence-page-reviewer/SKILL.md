@@ -124,32 +124,35 @@ Look for the element inside the field specification section heading. Two pattern
 
 **Once the media type is confirmed, apply the matching action:**
 
-- **File attachment confirmed (`media-group`)** — STOP and ask the user to download the file:
+> ⛔ **HARD STOP — do not proceed to Step 4 until the Excel situation is resolved.** You must ask the user for the file and wait for their response before continuing.
 
-> "I can see the [Item Description / Report Items / Data Map / Interface File Format] Excel is embedded on the page but I can't read it directly. Could you download it from Confluence (click the file to open it, then download) and share the local path?"
+- **File attachment confirmed (`media-group`)** — ask the user to download the file:
 
-- **Image only confirmed (`media-single` with dimensions), OR no media element found at all** — inform the user and ask them to provide the file:
+> "I can see the Item Description Excel is attached to the page but I can't read it directly. Could you download it from Confluence (click the file → download) and share the local file path? I need this before I can continue the review."
 
-> "I wasn't able to find the [Item Description / Report Items / Data Map / Interface File Format] Excel on this page — the section appears to contain only an image with no attached file. If you have the Excel, please share the local path and I'll include a field-level cross-check in the review."
+- **Image only confirmed (`media-single` with dimensions), OR no media element found at all** — ask the user to provide the file:
 
-**In both cases above**, once the user provides a local path, run:
+> "The Item Description section appears to contain only an image — no Excel file is attached. Do you have the Item Description Excel? If so, please share the local file path. I need this before I can continue the review."
+
+**Wait for the user's response.** Two outcomes:
+
+**Outcome A — user provides a file path:**
 ```bash
 python3 <skill-dir>/scripts/excel_parser.py --file /path/to/downloaded/file.xlsx
 ```
-Then proceed to Step 3c.
+Then proceed to Step 3c, then continue to Step 4.
 
-**If the user says they cannot provide the file** — flag as **Critical** in the report:
-- For the "file attachment exists" case: "The [Item Description / Report Items / Data Map / Interface File Format] Excel is attached to the page but its content could not be read. Field specifications cannot be verified — the author must make the file readable before this DR can be approved."
-- For the "image only / not found" case: "The [Item Description / Report Items / Data Map / Interface File Format] section contains no attached Excel file. Field specifications cannot be verified at all — the author must attach the Excel file before this DR can be approved."
-
-Then continue to Step 4 — do not block the rest of the review. The remaining checks (structure, logic, IS comments, message codes, etc.) proceed normally; only Step 3c is skipped.
+**Outcome B — user says they cannot provide the file:**
+Acknowledge, then proceed to Step 4. Flag as **Critical** in the final report:
+- File attachment exists: "The Item Description Excel is attached to this page but could not be read automatically. Field specifications cannot be verified — the author must make the file readable before this DR can be approved."
+- Image only / not found: "The Item Description section contains no attached Excel file. Field specifications cannot be verified at all — the author must attach the Excel file before this DR can be approved."
 
 Always distinguish between three states — they require different actions:
 | State | How to detect | Action |
 |---|---|---|
-| Section has a rendered table | Markdown shows table rows | Use it directly; skip to Step 3c |
-| File attachment exists but not rendered | HTML: `media-group` + `data-media-type="file"` | Ask user to download; if they cannot → Critical + continue |
-| Image only or no file found | HTML: `media-single` with dimensions, or no media element | Ask user to provide; if they cannot → Critical + continue |
+| Section has a rendered table | Markdown shows table rows | Use directly; skip to Step 3c |
+| File attachment exists but not rendered | HTML: `media-group` + `data-media-type="file"` | STOP → ask user to download → wait for response |
+| Image only or no file found | HTML: `media-single` with dimensions, or no media element | STOP → ask user to provide → wait for response |
 
 ### 3c. Cross-check field specification Excel
 
