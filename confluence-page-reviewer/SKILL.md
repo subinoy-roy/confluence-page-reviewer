@@ -239,9 +239,17 @@ Only flag a message reference as missing if: (a) the markdown shows nothing **an
 
 Message codes appear in Section 5 Logging Messages and throughout the Functional Description. There are two distinct formats — always classify each code before checking it.
 
-**Common codes** — suffix is digits only, e.g. `ERR50025`, `WRN10003`. These are shared across all pages and maintained on the Common Errors page linked from Section 5. To verify a common code:
-- Fetch the Common Errors page using `getConfluencePage` (or the REST API)
-- Confirm the code is listed there; if not, flag as Critical
+**Common codes** — suffix is digits only, e.g. `ERR50025`, `WRN10003`. These are shared across all pages and maintained in the local cache file. To verify a common code:
+
+1. Run: `python3 <skill-dir>/scripts/fetch_common_errors.py --check <CODE>`
+   - Exit 0 + prints the message → code is valid ✓
+   - Exit 1 "NOT FOUND" → proceed to step 2
+2. If not found, rebuild the cache and check again:
+   ```bash
+   python3 <skill-dir>/scripts/fetch_common_errors.py --refresh --cloud-id <cloudId>
+   python3 <skill-dir>/scripts/fetch_common_errors.py --check <CODE>
+   ```
+3. If still not found after refresh → flag as **Critical** (code does not exist on the Common Errors page)
 
 **Page-specific codes** — Format: `ERR` + module identifier (single letter) + running ID section + running number, e.g. `ERRV00100001`.
 
