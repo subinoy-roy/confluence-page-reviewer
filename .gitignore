@@ -9,3 +9,4 @@ Report_*.md
 *.bak
 plugins/
 *.html
+!confluence-page-reviewer/assets/*.html

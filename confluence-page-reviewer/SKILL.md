@@ -308,50 +308,11 @@ Determine the readiness verdict based on critical issue count before writing the
 
 ### Report template
 
+Read the template now:
+```bash
+cat <skill-dir>/assets/report-template.md
 ```
-## Confluence Page Review: [Page Title]
-
-**Page:** [Confluence URL] | **Last modified:** [date from API] | **Report generated:** [current date]
-
-**[X critical issues · Y warnings · Z suggestions]**
-
-> [Verdict line from verdict logic above]
-
----
-
-### 🔴 Critical
-
-• ...
-
-### 🟡 Warning
-
-• ...
-
-### 🟢 Suggestions
-
-• ...
-
----
-
-### 📋 Field Specification Issue List
-
-[Include this section only if there are sync issues between the field specification Excel and the rest of the document. Omit entirely if everything is in sync — or if the Excel could not be read, note that explicitly here instead.]
-
-| # | Issue | Location | Suggested Fix |
-|---|-------|----------|---------------|
-| 1 | ... | ... | ... |
-
-[If the Excel could not be read because it is a binary attachment:]
-> ⚠️ The field specification Excel (`<filename>.xlsx`) is attached to the page but its content could not be read automatically. Please manually verify that all fields/operations documented in the Excel are consistent with the rest of the page.
-
----
-
-### What to do next
-
-[2–3 sentence summary of the most important fixes and recommended order of action.]
-```
-
-If a category has no issues, omit it. If the Field Specification Issue List has no issues, omit that section too. If the page looks clean, say so directly rather than inventing nitpicks.
+Fill in every `{PLACEHOLDER}` with the actual report content. Omit any severity group that has no issues. Omit the Field Specification Issue List entirely if everything is in sync. If the page is clean, say so directly rather than inventing nitpicks.
 
 ## Step 6: Save the report to a file
 
@@ -361,127 +322,17 @@ Use the base name `Report_<functionCode>_<timestamp>` (fall back to `Report_<pag
 
 ### If `report_format` is `markdown`
 
-Write the report template from Step 5 verbatim to `<base name>.md`.
+Read the template, fill in all `{PLACEHOLDER}` values, and write to `<base name>.md`:
+```bash
+cat <skill-dir>/assets/report-template.md
+```
 
 ### If `report_format` is `html`
 
-Write a self-contained HTML file (`<base name>.html`) using the template below. Fill in all placeholders with the actual report content. All CSS is inline so the file opens correctly in any browser without external dependencies.
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Confluence Page Review: {PAGE_TITLE}</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 1100px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.5; }
-  h1 { font-size: 1.4rem; margin-bottom: 4px; }
-  .summary-badge { display: inline-block; background: #f0f0f0; border-radius: 6px; padding: 6px 14px; font-size: 0.9rem; color: #444; margin-bottom: 28px; }
-  .summary-badge .c { color: #c0392b; font-weight: 600; }
-  .summary-badge .w { color: #b7770d; font-weight: 600; }
-  .summary-badge .s { color: #27ae60; font-weight: 600; }
-  hr { border: none; border-top: 1px solid #e0e0e0; margin: 24px 0; }
-  h2 { font-size: 1.05rem; margin-top: 28px; margin-bottom: 10px; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  th { background: #f0f0f0; text-align: left; padding: 9px 12px; border: 1px solid #d0d0d0; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
-  td { padding: 10px 12px; border: 1px solid #ddd; vertical-align: top; }
-  tr:nth-child(even) td { background: #fafafa; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
-  .badge-critical { background: #fdecea; color: #c0392b; }
-  .badge-warning  { background: #fef8e7; color: #b7770d; }
-  .badge-suggest  { background: #eafaf1; color: #27ae60; }
-  .location { font-style: italic; color: #666; font-size: 0.85rem; }
-  .next-steps { background: #f0f7ff; border-radius: 6px; padding: 14px 18px; margin-top: 24px; font-size: 0.95rem; }
-  .next-steps h2 { margin-top: 0; }
-  .meta { font-size: 0.82rem; color: #666; margin-bottom: 12px; }
-  .meta a { color: #2563eb; text-decoration: none; }
-  .meta a:hover { text-decoration: underline; }
-  .verdict { display: inline-block; border-radius: 6px; padding: 7px 14px; font-size: 0.9rem; font-weight: 600; margin-bottom: 24px; }
-  .verdict-critical { background: #fdecea; color: #c0392b; border: 1px solid #f5c6c2; }
-  .verdict-warning  { background: #fef8e7; color: #b7770d; border: 1px solid #f0d060; }
-  .verdict-ready    { background: #eafaf1; color: #27ae60; border: 1px solid #a9dfc0; }
-</style>
-</head>
-<body>
-
-<h1>Confluence Page Review: {PAGE_TITLE}</h1>
-<p class="meta">
-  <a href="{PAGE_URL}" target="_blank">View page in Confluence</a>
-  &nbsp;·&nbsp; Last modified: {LAST_MODIFIED}
-  &nbsp;·&nbsp; Report generated: {REPORT_DATE}
-</p>
-<div class="summary-badge">
-  <span class="c">{N_CRITICAL} critical</span> &nbsp;·&nbsp;
-  <span class="w">{N_WARNINGS} warnings</span> &nbsp;·&nbsp;
-  <span class="s">{N_SUGGESTIONS} suggestions</span>
-</div>
-<br>
-<!-- Verdict: use class verdict-critical / verdict-warning / verdict-ready depending on issue count -->
-<div class="verdict {VERDICT_CLASS}">{VERDICT_TEXT}</div>
-
-<hr>
-
-<!-- Single table with all issues ordered Critical → Warning → Suggestion -->
-<table>
-  <thead>
-    <tr>
-      <th style="width:3%">#</th>
-      <th style="width:9%">Severity</th>
-      <th style="width:18%">Issue</th>
-      <th style="width:20%">Location</th>
-      <th style="width:25%">Problem</th>
-      <th style="width:25%">Suggested Fix</th>
-    </tr>
-  </thead>
-  <tbody>
-    <!-- One <tr> per issue. Use the badge class matching the severity. -->
-    <tr>
-      <td>{N}</td>
-      <td><span class="badge badge-critical">🔴 Critical</span></td>
-      <td><strong>{ISSUE_TYPE}</strong></td>
-      <td class="location">{LOCATION}</td>
-      <td>{PROBLEM}</td>
-      <td>{FIX}</td>
-    </tr>
-    <tr>
-      <td>{N}</td>
-      <td><span class="badge badge-warning">🟡 Warning</span></td>
-      <td><strong>{ISSUE_TYPE}</strong></td>
-      <td class="location">{LOCATION}</td>
-      <td>{PROBLEM}</td>
-      <td>{FIX}</td>
-    </tr>
-    <tr>
-      <td>{N}</td>
-      <td><span class="badge badge-suggest">🟢 Suggestion</span></td>
-      <td><strong>{ISSUE_TYPE}</strong></td>
-      <td class="location">{LOCATION}</td>
-      <td>{PROBLEM}</td>
-      <td>{FIX}</td>
-    </tr>
-  </tbody>
-</table>
-
-<hr>
-
-<!-- Include this section only if there are field specification sync issues; omit entirely otherwise -->
-<h2>📋 Field Specification Issue List</h2>
-<table>
-  <thead><tr><th>#</th><th>Issue</th><th>Location</th><th>Suggested Fix</th></tr></thead>
-  <tbody>
-    <!-- Repeat for each row: -->
-    <tr><td>{N}</td><td>{ISSUE}</td><td>{LOCATION}</td><td>{FIX}</td></tr>
-  </tbody>
-</table>
-
-<div class="next-steps">
-  <h2>📋 What to do next</h2>
-  <p>{NEXT_STEPS}</p>
-</div>
-
-</body>
-</html>
+Read the template, fill in all `{PLACEHOLDER}` values, and write to `<base name>.html`:
+```bash
+cat <skill-dir>/assets/report-template.html
 ```
+The template is self-contained (all CSS inline) and opens correctly in any browser without external dependencies. Inline comments in the template explain each placeholder and conditional section.
 
 Tell the user the full file path once saved.
