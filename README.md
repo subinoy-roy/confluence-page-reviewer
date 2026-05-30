@@ -129,9 +129,9 @@ GitHub Copilot does not run Claude Code skills natively, but you can reproduce t
 
 - VS Code with the **GitHub Copilot** extension installed and signed in
 - **Python 3.8+** installed
-  - macOS: pre-installed or via `brew install python`
-  - Linux: `sudo apt install python3` (Debian/Ubuntu) or `sudo dnf install python3` (Fedora)
-  - Windows: download from [python.org](https://www.python.org/downloads/) — tick **"Add python.exe to PATH"** during install
+  - macOS: install via `brew install python` (Homebrew) or download from [python.org](https://www.python.org/downloads/). Python is not bundled with macOS since Catalina — run `python3 --version` to check whether you already have it.
+  - Linux: `sudo apt install python3` (Debian/Ubuntu) or `sudo dnf install python3` (Fedora). Most modern distros ship Python 3.8+ by default.
+  - Windows: download from [python.org](https://www.python.org/downloads/) — tick **"Add python.exe to PATH"** during install. Verify with `python --version` in a new Command Prompt.
 - This repository cloned locally
 
 ### Step 1 — Install the Python dependency
